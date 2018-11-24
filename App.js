@@ -1,59 +1,103 @@
 import React, { Component } from "react";
-import { StyleSheet, View, Animated, PanResponder } from "react-native";
+import {
+  StatusBar,
+  AppRegistry,
+  StyleSheet,
+  Text,
+  View,
+  PanResponder,
+  TouchableOpacity,
+  Dimensions,
+} from "react-native";
 
-export default class animations extends Component {
-  state = {
-    animation: new Animated.ValueXY(0),
+const { width, height } = Dimensions.get("window");
+
+const getDirectionAndColor = ({ moveX, moveY, dx, dy }) => {
+  const draggedDown = dy > 30;
+  const draggedUp = dy < -30;
+  const draggedLeft = dx < -30;
+  const draggedRight = dx > 30;
+  const isRed = moveY < 90 && moveY > 40 && moveX > 0 && moveX < width;
+  const isBlue = moveY > height - 50 && moveX > 0 && moveX < width;
+  let dragDirection = "";
+
+  if (draggedDown || draggedUp) {
+    if (draggedDown) dragDirection += "dragged down ";
+    if (draggedUp) dragDirection += "dragged up ";
   }
 
-  componentWillMount() {
+  if (draggedLeft || draggedRight) {
+    if (draggedLeft) dragDirection += "dragged left ";
+    if (draggedRight) dragDirection += "dragged right ";
+  }
 
+  if (isRed) return `red ${dragDirection}`;
+  if (isBlue) return `blue ${dragDirection}`;
+  if (dragDirection) return dragDirection;
+};
+
+export default class App extends Component {
+  state = {
+    zone: "Still Touchable",
+  };
+  componentWillMount() {
     this._panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: Animated.event([
-        null,
-        {
-          dx: this.state.animation.x,
-          dy: this.state.animation.y,
-        }
-      ]),
-      onPanResponderRelease:  (e, { vx, vy }) => {
-        Animated.decay(this.state.animation, {
-          velocity: { x: vx, y: vy },
-        }).start();
+      onMoveShouldSetPanResponder: (evt, gestureState) => !!getDirectionAndColor(gestureState),
+      onPanResponderMove: (evt, gestureState) => {
+        const drag = getDirectionAndColor(gestureState);
+        this.setState({
+          zone: drag,
+        });
       },
-      onPanResponderGrant: (e, gestureEvent) => {
-        this.state.animation.extractOffset()
-      }
+      onPanResponderTerminationRequest: (evt, gestureState) => true,
     });
   }
-  render() {
-    const animatedStyle = {
-      transform: this.state.animation.getTranslateTransform()
-    }
 
+  onPress = () => {
+    this.setState({
+      zone: "I got touched with a parent pan responder",
+    });
+  };
+
+  render() {
     return (
-      <View style={styles.container}>
-          <Animated.View
-            style={[styles.content, animatedStyle]}
-            { ...this._panResponder.panHandlers }
-          />
+      <View style={styles.container} {...this._panResponder.panHandlers}>
+        <StatusBar hidden />
+        <View style={styles.zone1} />
+        <View style={styles.center}>
+          <TouchableOpacity onPress={this.onPress}>
+            <Text>{this.state.zone}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.zone2} />
       </View>
     );
-
   }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
   },
-  content: {
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zone1: {
+    top: 40,
+    left: 0,
+    right: 0,
     height: 50,
-    width: 50,
-    backgroundColor: 'red'
-  }
+    position: "absolute",
+    backgroundColor: "red",
+  },
+  zone2: {
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 50,
+    position: "absolute",
+    backgroundColor: "blue",
+  },
 });
